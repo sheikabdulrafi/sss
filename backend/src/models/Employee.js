@@ -2,35 +2,37 @@ const mongoose = require('mongoose');
 
 const employeeSchema = new mongoose.Schema(
   {
-    employeeNumber: { type: String, required: true, unique: true },
-    employeeName: { type: String, required: true },
-    department: String,
-    designation: String,
-    joiningDate: Date,
-    dateOfBirth: Date,
-    gender: String,
-    maritalStatus: String,
-    employeeStatus: String,
-    leftDate: Date,
-    fixedGross: Number,
-    newFixedGross: Number,
-    basic: Number,
-    hra: Number,
-    specialAllowance: Number,
-    email: String,
-    mobileNumber: String,
-    emergencyContactNumber: String,
-    panNumber: String,
-    aadharNumber: String,
-    pfNumber: String,
-    esiNumber: String,
-    bankAccountNumber: String,
-    ifscCode: String,
-    address: String,
-    location: String,
-    remarks: String
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
+    employeeCode: { type: String, required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    status: { type: String, enum: ['Offer Sent', 'Accepted', 'Joined', 'Resigned'], default: 'Offer Sent' },
+    personal: {
+      firstName: String,
+      lastName: String,
+      email: String,
+      phone: String,
+      address: String,
+      dob: Date
+    },
+    job: {
+      designation: String,
+      department: String,
+      dateOfJoining: Date,
+      manager: String
+    },
+    salary: {
+      ctc: Number,
+      monthlyGross: Number,
+      structure: { type: mongoose.Schema.Types.Mixed, default: {} }
+    },
+    bank: { bankName: String, accountNumber: String, ifsc: String },
+    govtIds: { pan: String, aadhaar: String, uan: String },
+    documents: [{ type: mongoose.Schema.Types.Mixed }],
+    dynamicFields: { type: mongoose.Schema.Types.Mixed, default: {} }
   },
   { timestamps: true }
 );
+
+employeeSchema.index({ companyId: 1, employeeCode: 1 }, { unique: true });
 
 module.exports = mongoose.model('Employee', employeeSchema);

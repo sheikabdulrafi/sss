@@ -1,56 +1,43 @@
-const ExcelJS = require('exceljs');
 const Employee = require('../models/Employee');
 
-const listEmployees = async (req, res) => {
-  const { search = '', department, employeeStatus } = req.query;
-  const filter = {
-    ...(department ? { department } : {}),
-    ...(employeeStatus ? { employeeStatus } : {}),
-    ...(search
-      ? {
-          $or: [
-            { employeeName: { $regex: search, $options: 'i' } },
-            { employeeNumber: { $regex: search, $options: 'i' } },
-            { email: { $regex: search, $options: 'i' } }
-          ]
-        }
-      : {})
-  };
-  const employees = await Employee.find(filter).sort({ createdAt: -1 });
-  res.json(employees);
+const createEmployee = async (req, res, next) => {
+  try {
+    const companyId = req.user.role === 'SUPER_ADMIN' ? req.body.companyId : req.companyId;
+    const employee = await Employee.create({ ...req.body, companyId });
+    return res.status(201).json(employee);
+  } catch (error) {
+    return next(error);
+  }
 };
 
-const createEmployee = async (req, res) => {
-  const employee = await Employee.create(req.body);
-  res.status(201).json(employee);
+const getEmployees = async (req, res, next) => {
+  try {
+    const companyId = req.user.role === 'SUPER_ADMIN' ? req.query.companyId : req.companyId;
+    const employees = await Employee.find({ companyId }).sort({ createdAt: -1 });
+    return res.json(employees);
+  } catch (error) {
+    return next(error);
+  }
 };
 
-const updateEmployee = async (req, res) => {
-  const employee = await Employee.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-  if (!employee) return res.status(404).json({ message: 'Employee not found' });
-  res.json(employee);
+const updateEmployee = async (req, res, next) => {
+  try {
+    const companyId = req.user.role === 'SUPER_ADMIN' ? req.body.companyId || req.query.companyId : req.companyId;
+    const employee = await Employee.findOneAndUpdate({ _id: req.params.id, companyId }, req.body, { new: true });
+    return res.json(employee);
+  } catch (error) {
+    return next(error);
+  }
 };
 
-const deleteEmployee = async (req, res) => {
-  const employee = await Employee.findByIdAndDelete(req.params.id);
-  if (!employee) return res.status(404).json({ message: 'Employee not found' });
-  res.json({ message: 'Employee removed' });
+const deleteEmployee = async (req, res, next) => {
+  try {
+    const companyId = req.user.role === 'SUPER_ADMIN' ? req.query.companyId : req.companyId;
+    await Employee.findOneAndDelete({ _id: req.params.id, companyId });
+    return res.json({ message: 'Employee deleted' });
+  } catch (error) {
+    return next(error);
+  }
 };
 
-const exportEmployees = async (req, res) => {
-  const employees = await Employee.find().lean();
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Employees');
-
-  const headers = Object.keys(employees[0] || { employeeNumber: '', employeeName: '' }).filter((h) => !['_id', '__v'].includes(h));
-  worksheet.columns = headers.map((header) => ({ header, key: header, width: 20 }));
-  employees.forEach((employee) => worksheet.addRow(employee));
-
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', 'attachment; filename=employees.xlsx');
-
-  await workbook.xlsx.write(res);
-  res.end();
-};
-
-module.exports = { listEmployees, createEmployee, updateEmployee, deleteEmployee, exportEmployees };
+module.exports = { createEmployee, getEmployees, updateEmployee, deleteEmployee };
