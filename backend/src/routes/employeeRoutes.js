@@ -1,18 +1,12 @@
 const express = require('express');
-const {
-  listEmployees,
-  createEmployee,
-  updateEmployee,
-  deleteEmployee,
-  exportEmployees
-} = require('../controllers/employeeController');
+const { createEmployee, getEmployees, updateEmployee, deleteEmployee } = require('../controllers/employeeController');
+const { protect, allowPermission } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.get('/', listEmployees);
-router.get('/export/excel', exportEmployees);
-router.post('/', createEmployee);
-router.put('/:id', updateEmployee);
-router.delete('/:id', deleteEmployee);
+router.post('/', protect, allowPermission('employees', 'create'), createEmployee);
+router.get('/', protect, allowPermission('employees', 'read'), getEmployees);
+router.put('/:id', protect, allowPermission('employees', 'update'), updateEmployee);
+router.delete('/:id', protect, allowPermission('employees', 'delete'), deleteEmployee);
 
 module.exports = router;
